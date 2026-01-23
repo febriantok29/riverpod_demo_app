@@ -19,7 +19,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       _isLoggingOut = true;
     });
 
-    await ref.read(authNotifierProvider.notifier).logout();
+    await ref.read(AuthProviders.notifier.notifier).logout();
 
     if (mounted) {
       Navigator.of(context).pushReplacement(
@@ -30,7 +30,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authNotifierProvider);
+    final authState = ref.watch(AuthProviders.notifier);
     final username = authState.username ?? 'User';
 
     return Scaffold(

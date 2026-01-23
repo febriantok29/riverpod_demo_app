@@ -25,7 +25,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final success = await ref
-          .read(authNotifierProvider.notifier)
+          .read(AuthProviders.notifier.notifier)
           .login(_usernameController.text, _passwordController.text);
 
       if (success && mounted) {
@@ -33,7 +33,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           MaterialPageRoute(builder: (context) => const HomePage()),
         );
       } else if (mounted) {
-        final errorMessage = ref.read(authNotifierProvider).errorMessage;
+        final errorMessage = ref.read(AuthProviders.notifier).errorMessage;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage ?? 'Login gagal'),
@@ -46,7 +46,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authNotifierProvider);
+    final authState = ref.watch(AuthProviders.notifier);
 
     return Scaffold(
       body: Container(

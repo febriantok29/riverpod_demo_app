@@ -21,7 +21,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   Future<void> _checkAuthStatus() async {
     // Check auth status
-    await ref.read(authNotifierProvider.notifier).checkAuthStatus();
+    await ref.read(AuthProviders.notifier.notifier).checkAuthStatus();
 
     // Delay untuk efek splash screen
     await Future.delayed(const Duration(seconds: 2));
@@ -29,7 +29,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (!mounted) return;
 
     // Navigate berdasarkan auth status
-    final authState = ref.read(authNotifierProvider);
+    final authState = ref.read(AuthProviders.notifier);
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(

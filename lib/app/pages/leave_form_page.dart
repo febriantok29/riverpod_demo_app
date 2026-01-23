@@ -43,7 +43,7 @@ class _LeaveFormPageState extends ConsumerState<LeaveFormPage> {
 
     // Reset form state saat masuk halaman
     Future.microtask(() {
-      ref.read(leaveFormProvider.notifier).resetFormState();
+      ref.read(LeaveProviders.form.notifier).resetFormState();
     });
   }
 
@@ -56,10 +56,10 @@ class _LeaveFormPageState extends ConsumerState<LeaveFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final formState = ref.watch(leaveFormProvider);
+    final formState = ref.watch(LeaveProviders.form);
 
     // Listen perubahan state untuk navigasi
-    ref.listen(leaveFormProvider, (previous, next) {
+    ref.listen(LeaveProviders.form, (previous, next) {
       if (next.isSuccess) {
         Navigator.pop(context, true); // Return true untuk refresh list
         ScaffoldMessenger.of(context).showSnackBar(
@@ -437,7 +437,7 @@ class _LeaveFormPageState extends ConsumerState<LeaveFormPage> {
       return;
     }
 
-    final notifier = ref.read(leaveFormProvider.notifier);
+    final notifier = ref.read(LeaveProviders.form.notifier);
 
     if (isEditMode) {
       await notifier.updateLeaveRequest(

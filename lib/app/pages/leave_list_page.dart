@@ -18,16 +18,16 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
     super.initState();
     // Load data saat page dibuka
     Future.microtask(() {
-      final username = ref.read(authNotifierProvider).username ?? 'User';
+      final username = ref.read(AuthProviders.notifier).username ?? 'User';
       // Seed demo data untuk first time
-      ref.read(leaveListProvider.notifier).seedDemoData(username);
+      ref.read(LeaveProviders.list.notifier).seedDemoData(username);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final leaveState = ref.watch(leaveListProvider);
-    final username = ref.watch(authNotifierProvider).username ?? 'User';
+    final leaveState = ref.watch(LeaveProviders.list);
+    final username = ref.watch(AuthProviders.notifier).username ?? 'User';
 
     return Scaffold(
       appBar: AppBar(
@@ -46,7 +46,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
         ),
         child: RefreshIndicator(
           onRefresh: () =>
-              ref.read(leaveListProvider.notifier).loadLeaveRequests(),
+              ref.read(LeaveProviders.list.notifier).loadLeaveRequests(),
           child: leaveState.isLoading
               ? const Center(
                   child: CircularProgressIndicator(color: Colors.white),
@@ -69,7 +69,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
 
           // Refresh list jika ada perubahan
           if (result == true) {
-            ref.read(leaveListProvider.notifier).loadLeaveRequests();
+            ref.read(LeaveProviders.list.notifier).loadLeaveRequests();
           }
         },
         backgroundColor: Colors.blue.shade700,
@@ -128,7 +128,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
             );
 
             if (result == true) {
-              ref.read(leaveListProvider.notifier).loadLeaveRequests();
+              ref.read(LeaveProviders.list.notifier).loadLeaveRequests();
             }
           }
         },
@@ -288,7 +288,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
 
                         if (result == true) {
                           ref
-                              .read(leaveListProvider.notifier)
+                              .read(LeaveProviders.list.notifier)
                               .loadLeaveRequests();
                         }
                       },
@@ -375,7 +375,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () =>
-                ref.read(leaveListProvider.notifier).loadLeaveRequests(),
+                ref.read(LeaveProviders.list.notifier).loadLeaveRequests(),
             child: const Text('Coba Lagi'),
           ),
         ],
@@ -400,7 +400,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
             onPressed: () async {
               Navigator.pop(context);
               final success = await ref
-                  .read(leaveListProvider.notifier)
+                  .read(LeaveProviders.list.notifier)
                   .deleteLeaveRequest(leaveId);
 
               if (mounted) {
