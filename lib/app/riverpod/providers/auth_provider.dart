@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_demo_app/app/models/approval_document.dart';
 import 'package:riverpod_demo_app/app/services/auth_service.dart';
 import 'package:riverpod_demo_app/app/states/auth_state.dart';
 
@@ -21,44 +22,39 @@ abstract class AuthProviders {
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService authService;
 
-  AuthNotifier(this.authService) : super(AuthState());
+  AuthNotifier(this.authService) : super(const AuthState());
 
-  // Check login status
+  /// Check login status dan load approved documents
   Future<void> checkAuthStatus() async {
     state = state.copyWith(isLoading: true);
 
     final isLoggedIn = await authService.isLoggedIn();
     final username = await authService.getUsername();
-
-    // Check if admin and approval status
-    final isAdmin = authService.isAdminUser(username);
-    final hasApproved = await authService.hasApproved();
+    final approvedDocs = await authService.getApprovedDocuments();
 
     state = state.copyWith(
       isLoading: false,
       isAuthenticated: isLoggedIn,
       username: username,
-      isApprovalRequired: isAdmin,
-      hasApproved: hasApproved,
+      approvedDocumentIds: approvedDocs,
     );
   }
 
-  // Login
+  /// Login user
   Future<bool> login(String username, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     final success = await authService.login(username, password);
 
     if (success) {
-      // Check if user is admin
-      final isAdmin = authService.isAdminUser(username);
+      // Load approved documents untuk user ini
+      final approvedDocs = await authService.getApprovedDocuments();
 
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: true,
         username: username,
-        isApprovalRequired: isAdmin,
-        hasApproved: false, // Reset approval status on new login
+        approvedDocumentIds: approvedDocs,
       );
     } else {
       state = state.copyWith(
@@ -70,15 +66,38 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return success;
   }
 
-  // Logout
+  /// Logout user
   Future<void> logout() async {
     await authService.logout();
-    state = AuthState(); // Reset ke state awal
+    state = const AuthState(); // Reset ke state awal
   }
 
-  // Save approval (untuk admin)
-  Future<void> saveApproval() async {
-    await authService.saveApproval();
-    state = state.copyWith(hasApproved: true);
+  /// Approve dokumen tertentu
+  /// Dipanggil ketika user menyetujui salah satu dokumen approval
+  Future<void> approveDocument(String documentId) async {
+    await authService.saveApprovedDocument(documentId);
+
+    // Update state dengan menambahkan document ID ke list
+    final currentApprovals = List<String>.from(state.approvedDocumentIds);
+    if (!currentApprovals.contains(documentId)) {
+      currentApprovals.add(documentId);
+      state = state.copyWith(approvedDocumentIds: currentApprovals);
+    }
+  }
+
+  /// Get dokumen yang belum di-approve untuk user tertentu
+  /// Return list document IDs yang perlu di-approve
+  List<String> getPendingDocuments() {
+    final username = state.username;
+    if (username == null) return [];
+
+    // Get required documents berdasarkan user type
+    final requiredDocs = ApprovalDocuments.getDocumentsForUser(username);
+
+    // Filter yang belum di-approve
+    return requiredDocs
+        .where((doc) => !state.approvedDocumentIds.contains(doc.id))
+        .map((doc) => doc.id)
+        .toList();
   }
 }
