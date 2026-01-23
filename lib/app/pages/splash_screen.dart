@@ -1,43 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_demo_app/app/pages/home_page.dart';
-import 'package:riverpod_demo_app/app/pages/login_page.dart';
-import 'package:riverpod_demo_app/app/riverpod/providers/auth_provider.dart';
 
-class SplashScreen extends ConsumerStatefulWidget {
+/// Splash Screen - Pure UI Component
+/// Tidak ada business logic, ref.read, ref.listen, atau apapun
+/// Hanya tampilan loading screen yang statis
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
-
-  @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends ConsumerState<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Delay eksekusi sampai widget tree selesai building
-    Future.microtask(() => _checkAuthStatus());
-  }
-
-  Future<void> _checkAuthStatus() async {
-    // Check auth status
-    await ref.read(AuthProviders.notifier.notifier).checkAuthStatus();
-
-    // Delay untuk efek splash screen
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (!mounted) return;
-
-    // Navigate berdasarkan auth status
-    final authState = ref.read(AuthProviders.notifier);
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) =>
-            authState.isAuthenticated ? const HomePage() : const LoginPage(),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +21,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.rocket_launch, size: 100, color: Colors.white),
+              const Icon(Icons.rocket_launch, size: 100, color: Colors.white),
               const SizedBox(height: 24),
               const Text(
                 'Riverpod Demo',

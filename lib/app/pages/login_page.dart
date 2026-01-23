@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_demo_app/app/pages/approval_page.dart';
 import 'package:riverpod_demo_app/app/pages/home_page.dart';
 import 'package:riverpod_demo_app/app/riverpod/providers/auth_provider.dart';
 
@@ -16,6 +17,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // Load last login username dan pre-fill ke text field
+    Future.microtask(() async {
+      final authService = ref.read(AuthProviders.service);
+      final lastUsername = await authService.getLastLoginUsername();
+      if (mounted && lastUsername != null) {
+        _usernameController.text = lastUsername;
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
@@ -29,9 +43,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           .login(_usernameController.text, _passwordController.text);
 
       if (success && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomePage()),
-        );
+        final authState = ref.read(AuthProviders.notifier);
+
+        // Check if admin requires approval
+        if (authState.isApprovalRequired && !authState.hasApproved) {
+          // Redirect to approval page
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const ApprovalPage()),
+          );
+        } else {
+          // Redirect to home page
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomePage()),
+          );
+        }
       } else if (mounted) {
         final errorMessage = ref.read(AuthProviders.notifier).errorMessage;
         ScaffoldMessenger.of(context).showSnackBar(
