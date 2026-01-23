@@ -146,7 +146,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
@@ -317,14 +317,14 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
           Icon(
             Icons.event_busy,
             size: 80,
-            color: Colors.white.withOpacity(0.5),
+            color: Colors.white.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
             'Belum ada pengajuan cuti',
             style: TextStyle(
               fontSize: 18,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -333,7 +333,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
             'Tap tombol + untuk mengajukan cuti',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -349,14 +349,14 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
           Icon(
             Icons.error_outline,
             size: 80,
-            color: Colors.white.withOpacity(0.5),
+            color: Colors.white.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
             'Oops!',
             style: TextStyle(
               fontSize: 18,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -367,7 +367,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
               message,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.white.withOpacity(0.6),
+                color: Colors.white.withValues(alpha: 0.6),
               ),
               textAlign: TextAlign.center,
             ),
@@ -403,7 +403,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
                   .read(LeaveProviders.list.notifier)
                   .deleteLeaveRequest(leaveId);
 
-              if (mounted) {
+              if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
