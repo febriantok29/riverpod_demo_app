@@ -1,32 +1,95 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_demo_app/app/models/approval_document.dart';
 import 'package:riverpod_demo_app/app/pages/home_page.dart';
 import 'package:riverpod_demo_app/app/pages/login_page.dart';
 import 'package:riverpod_demo_app/app/riverpod/providers/auth_provider.dart';
 
-/// Halaman approval untuk admin sebelum masuk ke aplikasi
-/// Menampilkan dokumen persetujuan (mock PDF) dan checkbox untuk menyetujui
+/// Halaman approval yang generic - bisa digunakan untuk berbagai dokumen
+/// Menerima ApprovalDocument sebagai parameter
+/// Self-contained: handle navigation sendiri setelah approve
 class ApprovalPage extends ConsumerStatefulWidget {
-  const ApprovalPage({super.key});
+  final ApprovalDocument document;
+
+  const ApprovalPage({super.key, required this.document});
 
   @override
-  ConsumerState<ApprovalPage> createState() => _ApprovalPageState();
+  ConsumerState<ApprovalPage> createState() => _MultiApprovalPageState();
 }
 
-class _ApprovalPageState extends ConsumerState<ApprovalPage> {
+class _MultiApprovalPageState extends ConsumerState<ApprovalPage> {
   bool _isAgreed = false;
   bool _isSubmitting = false;
   bool _isLoggingOut = false;
+  final ScrollController _scrollController = ScrollController();
 
-  /// Handle logout - jika user tidak setuju
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Handle submit approval
+  Future<void> _handleSubmit() async {
+    if (!_isAgreed) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      // Save approval ke service
+      await ref
+          .read(AuthProviders.notifier.notifier)
+          .approveDocument(widget.document.id);
+
+      if (!mounted) return;
+
+      // Check dokumen berikutnya
+      final pendingDocs = ref
+          .read(AuthProviders.notifier.notifier)
+          .getPendingDocuments();
+
+      if (pendingDocs.isEmpty) {
+        // Semua dokumen sudah approved → navigate ke home
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomePage()),
+          );
+        }
+      } else {
+        // Masih ada dokumen yang belum approved → navigate ke dokumen berikutnya
+        final nextDoc = ApprovalDocuments.getById(pendingDocs.first);
+        if (nextDoc != null && mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => ApprovalPage(document: nextDoc),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  /// Handle logout
   Future<void> _handleLogout() async {
-    // Show confirmation dialog
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Konfirmasi Logout'),
         content: const Text(
-          'Anda harus menyetujui dokumen untuk menggunakan aplikasi. Apakah Anda yakin ingin logout?',
+          'Anda harus menyetujui semua dokumen untuk menggunakan aplikasi. Apakah Anda yakin ingin logout?',
         ),
         actions: [
           TextButton(
@@ -48,27 +111,31 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
       _isLoggingOut = true;
     });
 
-    // Logout
-    await ref.read(AuthProviders.notifier.notifier).logout();
-
-    if (!mounted) return;
-
-    // Navigate to login page
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-      (route) => false,
-    );
+    try {
+      // Logout dan navigate ke login
+      await ref.read(AuthProviders.notifier.notifier).logout();
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoggingOut = false;
+        });
+      }
+    }
   }
 
-  /// Handle back button press
+  /// Handle back button
   Future<bool> _onWillPop() async {
-    // Show confirmation dialog
     final shouldExit = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Keluar Aplikasi?'),
+        title: const Text('Konfirmasi'),
         content: const Text(
-          'Anda harus menyetujui dokumen untuk menggunakan aplikasi. Apakah Anda yakin ingin keluar?',
+          'Anda harus menyetujui dokumen ini untuk melanjutkan. Keluar akan logout. Lanjutkan?',
         ),
         actions: [
           TextButton(
@@ -84,242 +151,104 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
       ),
     );
 
-    return shouldExit ?? false;
-  }
-
-  Future<void> _handleSubmit() async {
-    if (!_isAgreed) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Anda harus menyetujui dokumen terlebih dahulu'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
+    if (shouldExit == true) {
+      _handleLogout();
     }
 
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    // Save approval status
-    await ref.read(AuthProviders.notifier.notifier).saveApproval();
-
-    if (!mounted) return;
-
-    setState(() {
-      _isSubmitting = false;
-    });
-
-    // Navigate to home page
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const HomePage()),
-    );
+    return false; // Always prevent default back
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(AuthProviders.notifier);
-
     return PopScope(
-      canPop: false, // Disable default back behavior
+      canPop: false,
       onPopInvoked: (didPop) async {
-        if (didPop) return;
-
-        // Show confirmation dialog
-        final shouldPop = await _onWillPop();
-        if (shouldPop && mounted) {
-          Navigator.of(context).pop();
+        if (!didPop) {
+          await _onWillPop();
         }
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Persetujuan Dokumen'),
-          centerTitle: true,
-          automaticallyImplyLeading: false, // Disable default back button
+          title: Text(widget.document.title),
           backgroundColor: Colors.blue,
           foregroundColor: Colors.white,
+          automaticallyImplyLeading: false,
           actions: [
-            // Logout button
             IconButton(
               icon: const Icon(Icons.logout),
-              onPressed: _isLoggingOut || _isSubmitting ? null : _handleLogout,
+              onPressed: _isSubmitting || _isLoggingOut ? null : _handleLogout,
               tooltip: 'Logout',
             ),
           ],
         ),
         body: Column(
           children: [
-            // Info banner
+            // Progress indicator jika ada
+            if (_isSubmitting || _isLoggingOut) const LinearProgressIndicator(),
+
+            // Document description
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
               color: Colors.blue.shade50,
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.blue.shade700),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Selamat datang, ${authState.username ?? 'Admin'}!',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade700,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    widget.document.description,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Sebelum menggunakan aplikasi, Anda harus membaca dan menyetujui dokumen berikut.',
-                    style: TextStyle(fontSize: 14, color: Colors.blue.shade900),
+                  const Text(
+                    'Silakan baca dokumen di bawah ini dengan seksama.',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                 ],
               ),
             ),
 
-            // PDF Mock Content (scrollable)
+            // Document content
             Expanded(
               child: SingleChildScrollView(
+                controller: _scrollController,
                 padding: const EdgeInsets.all(16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.white,
-                  ),
-                  child: Column(
-                    children: [
-                      // PDF Header
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(8),
-                            topRight: Radius.circular(8),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.picture_as_pdf,
-                              color: Colors.red.shade700,
-                              size: 32,
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Dokumen Persetujuan Admin',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'Versi 1.0 - 23 Januari 2026',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // PDF Content Mock
-                      Padding(
-                        padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Render sections
+                    ...widget.document.sections.map((section) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 24),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'PERSETUJUAN PENGGUNAAN SISTEM',
-                              style: TextStyle(
-                                fontSize: 18,
+                            Text(
+                              section.title,
+                              style: const TextStyle(
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                color: Colors.blue,
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 20),
-                            _buildSection(
-                              '1. Ketentuan Umum',
-                              'Dengan menyetujui dokumen ini, Anda sebagai Administrator menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan yang berlaku dalam penggunaan sistem aplikasi ini.',
-                            ),
-                            _buildSection(
-                              '2. Tanggung Jawab Administrator',
-                              'Administrator bertanggung jawab penuh atas:\n'
-                                  '• Keamanan akun dan kredensial login\n'
-                                  '• Penggunaan fitur sesuai dengan kewenangan yang diberikan\n'
-                                  '• Kerahasiaan data yang diakses melalui sistem\n'
-                                  '• Backup data secara berkala',
-                            ),
-                            _buildSection(
-                              '3. Kebijakan Keamanan',
-                              'Administrator wajib:\n'
-                                  '• Menggunakan password yang kuat dan unik\n'
-                                  '• Tidak membagikan akun kepada pihak lain\n'
-                                  '• Melaporkan jika terjadi aktivitas mencurigakan\n'
-                                  '• Logout setelah selesai menggunakan sistem',
-                            ),
-                            _buildSection(
-                              '4. Privasi Data',
-                              'Semua data yang diakses melalui sistem ini bersifat rahasia dan tidak boleh disebarluaskan kepada pihak yang tidak berwenang tanpa izin tertulis dari perusahaan.',
-                            ),
-                            _buildSection(
-                              '5. Sanksi',
-                              'Pelanggaran terhadap ketentuan ini dapat mengakibatkan:\n'
-                                  '• Pencabutan akses ke sistem\n'
-                                  '• Tindakan disipliner sesuai kebijakan perusahaan\n'
-                                  '• Tindakan hukum jika diperlukan',
-                            ),
-                            const SizedBox(height: 20),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.shade50,
-                                border: Border.all(
-                                  color: Colors.amber.shade200,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.warning_amber_rounded,
-                                    color: Colors.amber.shade700,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Expanded(
-                                    child: Text(
-                                      'Dokumen ini mengikat secara hukum. Pastikan Anda membaca dengan teliti sebelum menyetujui.',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            const SizedBox(height: 8),
+                            Text(
+                              section.content,
+                              style: const TextStyle(fontSize: 14, height: 1.5),
+                              textAlign: TextAlign.justify,
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
+                      );
+                    }),
+                  ],
                 ),
               ),
             ),
 
-            // Checkbox and Submit Button
+            // Agreement checkbox and submit button
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -333,52 +262,34 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
                 ],
               ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Checkbox
-                  InkWell(
-                    onTap: () {
-                      setState(() {
-                        _isAgreed = !_isAgreed;
-                      });
-                    },
-                    child: Row(
-                      children: [
-                        Checkbox(
-                          value: _isAgreed,
-                          onChanged: (value) {
+                  CheckboxListTile(
+                    title: Text(
+                      'Saya telah membaca dan menyetujui ${widget.document.title}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    value: _isAgreed,
+                    onChanged: _isSubmitting || _isLoggingOut
+                        ? null
+                        : (value) {
                             setState(() {
                               _isAgreed = value ?? false;
                             });
                           },
-                          activeColor: Colors.blue,
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Saya telah membaca dan menyetujui seluruh ketentuan di atas',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                        ),
-                      ],
-                    ),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
                   ),
-                  const SizedBox(height: 12),
-
-                  // Submit Button
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
                     child: ElevatedButton(
-                      onPressed: (_isSubmitting || _isLoggingOut || !_isAgreed)
+                      onPressed: !_isAgreed || _isSubmitting || _isLoggingOut
                           ? null
                           : _handleSubmit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.grey.shade300,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       child: _isSubmitting
                           ? const SizedBox(
@@ -393,10 +304,7 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
                             )
                           : const Text(
                               'Setuju dan Lanjutkan',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: TextStyle(fontSize: 16),
                             ),
                     ),
                   ),
@@ -405,34 +313,6 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
             ),
           ],
         ),
-      ), // End PopScope
-    );
-  }
-
-  Widget _buildSection(String title, String content) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            content,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade700,
-              height: 1.5,
-            ),
-          ),
-        ],
       ),
     );
   }
