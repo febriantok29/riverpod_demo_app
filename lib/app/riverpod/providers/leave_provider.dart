@@ -2,10 +2,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_demo_app/app/services/leave_service.dart';
 import 'package:riverpod_demo_app/app/states/leave_state.dart';
 
-/// Provider untuk LeaveService (singleton)
-final leaveServiceProvider = Provider<LeaveService>((ref) {
-  return LeaveService();
-});
+/// Abstract class sebagai namespace untuk leave-related providers
+/// Menggunakan pattern ini untuk organisasi code yang lebih baik
+abstract class LeaveProviders {
+  /// Provider untuk LeaveService (singleton)
+  static final service = Provider<LeaveService>((ref) {
+    return LeaveService();
+  });
+
+  /// Provider untuk LeaveListNotifier (state management untuk list)
+  static final list = StateNotifierProvider<LeaveListNotifier, LeaveListState>((
+    ref,
+  ) {
+    final leaveService = ref.watch(service);
+    return LeaveListNotifier(leaveService);
+  });
+
+  /// Provider untuk LeaveFormNotifier (state management untuk form)
+  static final form = StateNotifierProvider<LeaveFormNotifier, LeaveFormState>((
+    ref,
+  ) {
+    final leaveService = ref.watch(service);
+    return LeaveFormNotifier(leaveService, ref);
+  });
+}
 
 /// StateNotifier untuk mengelola daftar pengajuan cuti
 class LeaveListNotifier extends StateNotifier<LeaveListState> {
@@ -51,13 +71,6 @@ class LeaveListNotifier extends StateNotifier<LeaveListState> {
   }
 }
 
-/// Provider untuk LeaveListNotifier
-final leaveListProvider =
-    StateNotifierProvider<LeaveListNotifier, LeaveListState>((ref) {
-      final leaveService = ref.watch(leaveServiceProvider);
-      return LeaveListNotifier(leaveService);
-    });
-
 /// StateNotifier untuk form pengajuan cuti
 class LeaveFormNotifier extends StateNotifier<LeaveFormState> {
   final LeaveService leaveService;
@@ -97,7 +110,7 @@ class LeaveFormNotifier extends StateNotifier<LeaveFormState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
 
       // Refresh list setelah create
-      ref.read(leaveListProvider.notifier).loadLeaveRequests();
+      ref.read(LeaveProviders.list.notifier).loadLeaveRequests();
 
       return true;
     } catch (e) {
@@ -141,7 +154,7 @@ class LeaveFormNotifier extends StateNotifier<LeaveFormState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
 
       // Refresh list setelah update
-      ref.read(leaveListProvider.notifier).loadLeaveRequests();
+      ref.read(LeaveProviders.list.notifier).loadLeaveRequests();
 
       return true;
     } catch (e) {
@@ -158,10 +171,3 @@ class LeaveFormNotifier extends StateNotifier<LeaveFormState> {
     state = LeaveFormState();
   }
 }
-
-/// Provider untuk LeaveFormNotifier
-final leaveFormProvider =
-    StateNotifierProvider<LeaveFormNotifier, LeaveFormState>((ref) {
-      final leaveService = ref.watch(leaveServiceProvider);
-      return LeaveFormNotifier(leaveService, ref);
-    });

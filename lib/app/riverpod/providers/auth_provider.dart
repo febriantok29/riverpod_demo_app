@@ -2,10 +2,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_demo_app/app/services/auth_service.dart';
 import 'package:riverpod_demo_app/app/states/auth_state.dart';
 
-// Provider untuk AuthService
-final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService();
-});
+/// Abstract class sebagai namespace untuk auth-related providers
+/// Menggunakan pattern ini untuk organisasi code yang lebih baik
+abstract class AuthProviders {
+  /// Provider untuk AuthService (singleton)
+  static final service = Provider<AuthService>((ref) {
+    return AuthService();
+  });
+
+  /// Provider untuk AuthNotifier (state management)
+  static final notifier = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+    final authService = ref.watch(service);
+    return AuthNotifier(authService);
+  });
+}
 
 // StateNotifier untuk mengelola auth state
 class AuthNotifier extends StateNotifier<AuthState> {
@@ -55,11 +65,3 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = AuthState(); // Reset ke state awal
   }
 }
-
-// Provider untuk AuthNotifier
-final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((
-  ref,
-) {
-  final authService = ref.watch(authServiceProvider);
-  return AuthNotifier(authService);
-});
