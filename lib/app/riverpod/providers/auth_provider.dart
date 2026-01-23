@@ -30,10 +30,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final isLoggedIn = await authService.isLoggedIn();
     final username = await authService.getUsername();
 
+    // Check if admin and approval status
+    final isAdmin = authService.isAdminUser(username);
+    final hasApproved = await authService.hasApproved();
+
     state = state.copyWith(
       isLoading: false,
       isAuthenticated: isLoggedIn,
       username: username,
+      isApprovalRequired: isAdmin,
+      hasApproved: hasApproved,
     );
   }
 
@@ -44,10 +50,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final success = await authService.login(username, password);
 
     if (success) {
+      // Check if user is admin
+      final isAdmin = authService.isAdminUser(username);
+
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: true,
         username: username,
+        isApprovalRequired: isAdmin,
+        hasApproved: false, // Reset approval status on new login
       );
     } else {
       state = state.copyWith(
@@ -63,5 +74,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> logout() async {
     await authService.logout();
     state = AuthState(); // Reset ke state awal
+  }
+
+  // Save approval (untuk admin)
+  Future<void> saveApproval() async {
+    await authService.saveApproval();
+    state = state.copyWith(hasApproved: true);
   }
 }
