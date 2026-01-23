@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_demo_app/app/models/approval_document.dart';
 import 'package:riverpod_demo_app/app/pages/approval_page.dart';
 import 'package:riverpod_demo_app/app/pages/home_page.dart';
 import 'package:riverpod_demo_app/app/riverpod/providers/auth_provider.dart';
@@ -36,6 +37,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
+  /// Helper method untuk navigate ke approval document
+  void _navigateToApprovalDocument(BuildContext context, String documentId) {
+    final document = ApprovalDocuments.getById(documentId);
+    if (document == null) {
+      // Fallback ke home jika dokumen tidak ditemukan
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
+      return;
+    }
+
+    // Navigate ke MultiApprovalPage
+    // Page ini akan handle navigation sendiri setelah approve
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => ApprovalPage(document: document)),
+    );
+  }
+
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final success = await ref
@@ -43,19 +62,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           .login(_usernameController.text, _passwordController.text);
 
       if (success && mounted) {
-        final authState = ref.read(AuthProviders.notifier);
+        // Check pending documents (untuk semua user)
+        final pendingDocs = ref
+            .read(AuthProviders.notifier.notifier)
+            .getPendingDocuments();
 
-        // Check if admin requires approval
-        if (authState.isApprovalRequired && !authState.hasApproved) {
-          // Redirect to approval page
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const ApprovalPage()),
-          );
-        } else {
-          // Redirect to home page
+        if (pendingDocs.isEmpty) {
+          // Tidak ada dokumen yang perlu approved atau sudah semua approved
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const HomePage()),
           );
+        } else {
+          // Ada dokumen yang belum approved - navigate ke dokumen pertama
+          _navigateToApprovalDocument(context, pendingDocs.first);
         }
       } else if (mounted) {
         final errorMessage = ref.read(AuthProviders.notifier).errorMessage;
