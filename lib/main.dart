@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
-import 'package:riverpod_demo_app/app/pages/splash_screen.dart';
+import 'package:riverpod_demo_app/app/app_initializer.dart';
 
 void main() async {
   // Initialize Indonesian locale for date formatting
@@ -26,7 +26,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const SplashScreen(),
+      // AppInitializer handle semua logic, splash screen pure UI
+      home: const AppInitializer(),
     );
   }
 }
