@@ -1,15 +1,23 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   static const String _keyIsLoggedIn = 'is_logged_in';
   static const String _keyUsername = 'username';
-  static const String _keyHasApproved = 'has_approved';
+  static const String _keyApprovedDocuments = 'approved_documents';
   static const String _keyLastLoginUsername = 'last_login_username';
 
   // Check apakah username adalah admin (contains "admin")
   bool isAdminUser(String? username) {
     if (username == null || username.isEmpty) return false;
     return username.toLowerCase().contains('admin');
+  }
+
+  // Check apakah username adalah member (contains "member")
+  bool isMemberUser(String? username) {
+    if (username == null || username.isEmpty) return false;
+    return username.toLowerCase().contains('member');
   }
 
   // Check apakah user sudah login
@@ -43,7 +51,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyIsLoggedIn);
     await prefs.remove(_keyUsername);
-    await prefs.remove(_keyHasApproved); // Clear approval status
+    await prefs.remove(_keyApprovedDocuments); // Clear approval status
     // Note: _keyLastLoginUsername NOT removed - persist for next login
   }
 
@@ -53,15 +61,37 @@ class AuthService {
     return prefs.getString(_keyLastLoginUsername);
   }
 
-  // Check apakah admin sudah approve
-  Future<bool> hasApproved() async {
+  /// Get list dokumen yang sudah di-approve oleh user
+  Future<List<String>> getApprovedDocuments() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyHasApproved) ?? false;
+    final jsonString = prefs.getString(_keyApprovedDocuments);
+    if (jsonString == null || jsonString.isEmpty) {
+      return [];
+    }
+    try {
+      final List<dynamic> decoded = jsonDecode(jsonString);
+      return decoded.cast<String>();
+    } catch (e) {
+      return [];
+    }
   }
 
-  // Save approval status
-  Future<void> saveApproval() async {
+  /// Save dokumen yang sudah di-approve (menambahkan ke list existing)
+  Future<void> saveApprovedDocument(String documentId) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyHasApproved, true);
+    final currentApprovals = await getApprovedDocuments();
+
+    // Cek apakah sudah ada, jika belum tambahkan
+    if (!currentApprovals.contains(documentId)) {
+      currentApprovals.add(documentId);
+      final jsonString = jsonEncode(currentApprovals);
+      await prefs.setString(_keyApprovedDocuments, jsonString);
+    }
+  }
+
+  /// Clear semua approved documents (dipanggil saat logout)
+  Future<void> clearApprovedDocuments() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyApprovedDocuments);
   }
 }
