@@ -14,10 +14,10 @@ class ApprovalPage extends ConsumerStatefulWidget {
   const ApprovalPage({super.key, required this.document});
 
   @override
-  ConsumerState<ApprovalPage> createState() => _MultiApprovalPageState();
+  ConsumerState<ApprovalPage> createState() => _ApprovalPageState();
 }
 
-class _MultiApprovalPageState extends ConsumerState<ApprovalPage> {
+class _ApprovalPageState extends ConsumerState<ApprovalPage> {
   bool _isAgreed = false;
   bool _isSubmitting = false;
   bool _isLoggingOut = false;
