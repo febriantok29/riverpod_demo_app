@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_demo_app/app/pages/leave_list_page.dart';
 import 'package:riverpod_demo_app/app/pages/login_page.dart';
+import 'package:riverpod_demo_app/app/pages/task/task_list_page.dart';
 import 'package:riverpod_demo_app/app/riverpod/providers/auth_provider.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -149,6 +150,22 @@ class _HomePageState extends ConsumerState<HomePage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const LeaveListPage(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildModuleCard(
+                  context: context,
+                  title: 'Task Management',
+                  subtitle: 'Kelola task harian Anda',
+                  icon: Icons.task_alt,
+                  color: Colors.teal,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TaskListPage(),
                       ),
                     );
                   },
