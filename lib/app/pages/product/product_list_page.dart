@@ -92,20 +92,24 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
   }
 
   Widget _buildBody(ProductListState state) {
-    if (state.isLoading) {
+    // Loading state untuk initial load
+    if (state.isLoading && state.products.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
 
+    // Error state
     if (state.errorMessage != null && state.products.isEmpty) {
       return _buildErrorView(state.errorMessage!);
     }
 
+    // Empty state
     if (state.products.isEmpty) {
       return _buildEmptyView(state.isSearchMode);
     }
 
+    // Content dengan RefreshIndicator
     return RefreshIndicator(
       onRefresh: () => ref.read(ProductProviders.list.notifier).refresh(),
       child: _buildProductGrid(state),
@@ -113,19 +117,18 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
   }
 
   Widget _buildProductGrid(ProductListState state) {
+    final products = state.products;
+
     // Bagi products menjadi rows (2 kolom per row)
     final List<List<Product>> rows = [];
-    for (int i = 0; i < state.products.length; i += 2) {
-      rows.add([
-        state.products[i],
-        if (i + 1 < state.products.length) state.products[i + 1],
-      ]);
+    for (int i = 0; i < products.length; i += 2) {
+      rows.add([products[i], if (i + 1 < products.length) products[i + 1]]);
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: rows.length + (state.isLoadingMore ? 1 : 0),
-      itemBuilder: (context, index) {
+      itemBuilder: (_, index) {
         // Loading indicator di bottom
         if (index >= rows.length) {
           return const Padding(
@@ -137,22 +140,27 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
         }
 
         // ✅ INDEX-BASED DETECTION
-        // Trigger load more ketika sudah sampai 5 rows terakhir
-        final totalProducts = state.products.length;
-        final currentProductIndex = index * 2; // karena 2 kolom per row
-        final threshold =
-            totalProducts - 10; // trigger 10 products sebelum habis
+        // Trigger hanya sekali ketika mendekati akhir
+        final totalProducts = products.length;
+        final currentProductIndex = index * 2;
+        final threshold = totalProducts - 10;
 
+        // Hanya trigger jika:
+        // 1. Index mencapai threshold
+        // 2. Masih ada data
+        // 3. Tidak sedang loading
+        // 4. State sudah initialized (products tidak kosong)
         if (currentProductIndex >= threshold &&
             state.hasMore &&
             !state.isLoadingMore &&
-            !state.isLoading) {
-          print(
-            '🔥 INDEX TRIGGER: currentIndex=$currentProductIndex, threshold=$threshold, total=$totalProducts',
-          );
-          // Delayed call untuk prevent multiple triggers
-          Future.microtask(() {
-            if (mounted) {
+            state.products.isNotEmpty &&
+            index == rows.length - 5) {
+          // Hanya trigger pada row tertentu untuk prevent multiple calls
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !ref.read(ProductProviders.list).isLoadingMore) {
+              print(
+                '🔥 INDEX TRIGGER: currentIndex=$currentProductIndex, threshold=$threshold, total=$totalProducts',
+              );
               ref.read(ProductProviders.list.notifier).loadMore();
             }
           });
