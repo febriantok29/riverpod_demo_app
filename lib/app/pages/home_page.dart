@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_demo_app/app/pages/leave_list_page.dart';
 import 'package:riverpod_demo_app/app/pages/login_page.dart';
+import 'package:riverpod_demo_app/app/pages/product/product_list_page.dart';
 import 'package:riverpod_demo_app/app/pages/task/task_list_page.dart';
 import 'package:riverpod_demo_app/app/riverpod/providers/auth_provider.dart';
 
@@ -166,6 +167,22 @@ class _HomePageState extends ConsumerState<HomePage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const TaskListPage(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildModuleCard(
+                  context: context,
+                  title: 'Product Catalog',
+                  subtitle: 'Browse dan kelola produk',
+                  icon: Icons.shopping_bag,
+                  color: Colors.purple,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProductListPage(),
                       ),
                     );
                   },
