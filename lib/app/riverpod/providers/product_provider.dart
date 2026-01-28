@@ -36,11 +36,10 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
   final ProductService _service;
 
   ProductListNotifier(this._service) : super(ProductListState()) {
-    // Load initial products saat notifier dibuat
     loadInitial();
   }
 
-  /// Load initial products (page pertama)
+  /// Load initial products
   Future<void> loadInitial() async {
     state = state.copyWith(
       isLoading: true,
@@ -53,8 +52,8 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
       final response = await _service.getProducts(limit: state.limit, skip: 0);
 
       state = state.copyWith(
-        products: response.products,
-        currentPage: 0,
+        products: response.data,
+        currentPage: response.page,
         total: response.total,
         isLoading: false,
         hasMore: response.hasMore,
@@ -67,9 +66,9 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
   /// Load more products untuk infinite scroll
   Future<void> loadMore() async {
     // Prevent multiple calls dan cek apakah masih ada data
-    if (state.isLoadingMore || !state.hasMore || state.isLoading) {
+    if (state.isLoadingMore || !state.hasMore) {
       print(
-        '⛔️ LOAD MORE BLOCKED: isLoadingMore=${state.isLoadingMore}, hasMore=${state.hasMore}, isLoading=${state.isLoading}',
+        '⛔️ LOAD MORE BLOCKED: isLoadingMore=${state.isLoadingMore}, hasMore=${state.hasMore}',
       );
       return;
     }
@@ -93,12 +92,12 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
           : await _service.getProducts(limit: state.limit, skip: skip);
 
       print(
-        '📦 API RESPONSE: got ${response.products.length} products, hasMore=${response.hasMore}',
+        '📦 API RESPONSE: got ${response.data.length} products, hasMore=${response.hasMore}',
       );
 
       state = state.copyWith(
-        products: [...state.products, ...response.products],
-        currentPage: nextPage,
+        products: [...state.products, ...response.data],
+        currentPage: response.page,
         total: response.total,
         isLoadingMore: false,
         hasMore: response.hasMore,
@@ -124,7 +123,7 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
   Future<void> search(String query) async {
     if (query.trim().isEmpty) {
       // Kalau query kosong, kembali ke load all products
-      state = state.copyWith(searchQuery: null);
+      state = state.copyWith(searchQuery: null, isLoading: true);
       await loadInitial();
       return;
     }
@@ -145,8 +144,8 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
       );
 
       state = state.copyWith(
-        products: response.products,
-        currentPage: 0,
+        products: response.data,
+        currentPage: response.page,
         total: response.total,
         isLoading: false,
         hasMore: response.hasMore,
