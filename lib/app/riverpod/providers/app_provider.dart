@@ -15,7 +15,7 @@ abstract class AppProviders {
 /// StateNotifier untuk mengelola application initialization
 /// Memisahkan business logic dari UI layer
 class AppNotifier extends StateNotifier<AppState> {
-  final Ref ref;
+  final Ref<AppState> ref;
 
   AppNotifier(this.ref) : super(const AppState());
 
@@ -26,7 +26,9 @@ class AppNotifier extends StateNotifier<AppState> {
 
     try {
       // Check authentication status
-      await ref.read(AuthProviders.notifier.notifier).checkAuthStatus();
+      await ref
+          .read<AuthNotifier>(AuthProviders.notifier.notifier)
+          .checkAuthStatus();
 
       // Delay untuk splash screen effect (optional)
       await Future.delayed(const Duration(seconds: 2));
