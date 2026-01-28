@@ -39,7 +39,7 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
     // Listen untuk route changes dan navigate accordingly
     ref.listen(AppProviders.notifier, (previous, next) {
       if (!next.isInitializing && next.currentRoute != AppRoute.splash) {
-        _navigateToRoute(context, next.currentRoute);
+        _navigateToRoute(context, next);
       }
     });
 
@@ -48,15 +48,23 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
   }
 
   /// Navigate berdasarkan AppRoute
-  void _navigateToRoute(BuildContext context, AppRoute route) {
+  void _navigateToRoute(BuildContext context, AppState appState) {
     Widget destinationPage;
 
-    switch (route) {
+    switch (appState.currentRoute) {
       case AppRoute.login:
         destinationPage = const LoginPage();
         break;
       case AppRoute.approval:
-        destinationPage = const ApprovalPage();
+        // Untuk semua user (admin dan member) - menggunakan MultiApprovalPage
+        final document = appState.currentApprovalDocument;
+        if (document == null) {
+          // Fallback ke login jika document null
+          destinationPage = const LoginPage();
+        } else {
+          // MultiApprovalPage self-contained, handle navigation sendiri
+          destinationPage = ApprovalPage(document: document);
+        }
         break;
       case AppRoute.home:
         destinationPage = const HomePage();

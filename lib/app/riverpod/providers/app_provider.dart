@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_demo_app/app/models/approval_document.dart';
 import 'package:riverpod_demo_app/app/riverpod/providers/auth_provider.dart';
 import 'package:riverpod_demo_app/app/states/app_state.dart';
 
@@ -14,7 +15,7 @@ abstract class AppProviders {
 /// StateNotifier untuk mengelola application initialization
 /// Memisahkan business logic dari UI layer
 class AppNotifier extends StateNotifier<AppState> {
-  final Ref ref;
+  final Ref<AppState> ref;
 
   AppNotifier(this.ref) : super(const AppState());
 
@@ -25,7 +26,9 @@ class AppNotifier extends StateNotifier<AppState> {
 
     try {
       // Check authentication status
-      await ref.read(AuthProviders.notifier.notifier).checkAuthStatus();
+      await ref
+          .read<AuthNotifier>(AuthProviders.notifier.notifier)
+          .checkAuthStatus();
 
       // Delay untuk splash screen effect (optional)
       await Future.delayed(const Duration(seconds: 2));
@@ -35,24 +38,61 @@ class AppNotifier extends StateNotifier<AppState> {
 
       // Determine route berdasarkan auth dan approval status
       AppRoute nextRoute;
+      ApprovalDocument? nextDocument;
+
       if (!authState.isAuthenticated) {
         // Belum login → Login page
         nextRoute = AppRoute.login;
-      } else if (authState.isApprovalRequired && !authState.hasApproved) {
-        // Admin belum approve → Approval page
-        nextRoute = AppRoute.approval;
       } else {
-        // Sudah login dan approved (atau bukan admin) → Home page
-        nextRoute = AppRoute.home;
+        // Check pending documents (untuk admin dan member)
+        final pendingDocs = ref
+            .read(AuthProviders.notifier.notifier)
+            .getPendingDocuments();
+
+        if (pendingDocs.isEmpty) {
+          // Sudah approve semua atau tidak perlu approval
+          nextRoute = AppRoute.home;
+        } else {
+          // Ada dokumen yang belum di-approve, ambil yang pertama
+          nextRoute = AppRoute.approval;
+          nextDocument = ApprovalDocuments.getById(pendingDocs.first);
+        }
       }
 
       // Update state dengan route tujuan
-      state = state.copyWith(isInitializing: false, currentRoute: nextRoute);
+      state = state.copyWith(
+        isInitializing: false,
+        currentRoute: nextRoute,
+        currentApprovalDocument: nextDocument,
+      );
     } catch (e) {
       // Handle error jika ada
       state = state.copyWith(
         isInitializing: false,
         errorMessage: 'Initialization failed: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Navigate ke dokumen approval berikutnya
+  /// Dipanggil setelah user approve satu dokumen
+  void navigateToNextApproval() {
+    final pendingDocs = ref
+        .read(AuthProviders.notifier.notifier)
+        .getPendingDocuments();
+
+    if (pendingDocs.isEmpty) {
+      // Semua dokumen sudah di-approve → Home
+      state = state.copyWith(
+        currentRoute: AppRoute.home,
+        currentApprovalDocument: null,
+      );
+    } else {
+      // Masih ada dokumen yang belum di-approve
+      final nextDoc = ApprovalDocuments.getById(pendingDocs.first);
+      state = state.copyWith(
+        currentRoute: AppRoute.approval,
+        currentApprovalDocument: nextDoc,
       );
     }
   }
