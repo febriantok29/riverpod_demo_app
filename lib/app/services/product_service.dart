@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:riverpod_demo_app/app/models/product.dart';
+import 'package:riverpod_demo_app/app/models/list_response.dart';
 
 /// Service untuk mengelola Product API dari dummyjson.com
 /// Menggunakan http package untuk API calls
@@ -10,7 +11,7 @@ class ProductService {
   /// Get products with pagination
   /// [limit] jumlah products per page (default: 10)
   /// [skip] jumlah products yang di-skip untuk pagination
-  Future<ProductListResponse> getProducts({
+  Future<ListResponse<Product>> getProducts({
     int limit = 10,
     int skip = 0,
   }) async {
@@ -20,12 +21,16 @@ class ProductService {
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
-        return ProductListResponse.fromJson(json);
+        return ListResponse.fromJson(
+          json,
+          Product.fromJson,
+          dataKey: 'products',
+        );
       } else {
-        throw Exception('Failed to load products: ${response.statusCode}');
+        throw 'Failed to load products: ${response.statusCode}';
       }
     } catch (e) {
-      throw Exception('Failed to load products: $e');
+      throw 'Failed to load products: $e';
     }
   }
 
@@ -47,7 +52,7 @@ class ProductService {
   }
 
   /// Search products by query
-  Future<ProductListResponse> searchProducts({
+  Future<ListResponse<Product>> searchProducts({
     required String query,
     int limit = 10,
     int skip = 0,
@@ -60,12 +65,16 @@ class ProductService {
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
-        return ProductListResponse.fromJson(json);
+        return ListResponse.fromJson(
+          json,
+          Product.fromJson,
+          dataKey: 'products',
+        );
       } else {
-        throw Exception('Failed to search products: ${response.statusCode}');
+        throw 'Failed to search products: ${response.statusCode}';
       }
     } catch (e) {
-      throw Exception('Failed to search products: $e');
+      throw 'Failed to search products: $e';
     }
   }
 
@@ -96,10 +105,10 @@ class ProductService {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
         return Product.fromJson(json);
       } else {
-        throw Exception('Failed to create product: ${response.statusCode}');
+        throw 'Failed to create product: ${response.statusCode}';
       }
     } catch (e) {
-      throw Exception('Failed to create product: $e');
+      throw 'Failed to create product: $e';
     }
   }
 
@@ -131,10 +140,10 @@ class ProductService {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
         return Product.fromJson(json);
       } else {
-        throw Exception('Failed to update product: ${response.statusCode}');
+        throw 'Failed to update product: ${response.statusCode}';
       }
     } catch (e) {
-      throw Exception('Failed to update product: $e');
+      throw 'Failed to update product: $e';
     }
   }
 
@@ -146,10 +155,10 @@ class ProductService {
       final response = await http.delete(url);
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to delete product: ${response.statusCode}');
+        throw 'Failed to delete product: ${response.statusCode}';
       }
     } catch (e) {
-      throw Exception('Failed to delete product: $e');
+      throw 'Failed to delete product: $e';
     }
   }
 }
