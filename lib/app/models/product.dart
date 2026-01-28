@@ -110,7 +110,7 @@ class Product {
       '\$${discountedPrice.toStringAsFixed(2)}';
 }
 
-/// Response wrapper untuk pagination API
+@Deprecated('Use `ListResponse` instead')
 class ProductListResponse {
   final List<Product> products;
   final int total;
